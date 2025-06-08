@@ -56,7 +56,7 @@ class App {
       );
 
       const brickCountX = 6;
-      const brickCountY = 5;
+      const brickCountY = 8;
 
       const gap = 0.1;
 
@@ -76,8 +76,8 @@ class App {
         for (let y = 0; y < brickCountY; ++y) {
           const box = new THREE.Mesh(geometry, material);
           box.position.set(
-            left + x * (brickWidth + gap),
-            top - y * (brickHeight + gap),
+            left + brickWidth / 2 + x * (brickWidth + gap),
+            top - brickHeight / 2 - y * (brickHeight + gap),
             -2,
           );
           this.scene_.add(box);
