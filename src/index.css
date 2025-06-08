@@ -1,15 +1,5 @@
 body,
 html {
   margin: 0;
-}
-
-/* Yes, I am lazy */
-@media (prefers-color-scheme: dark) {
-  html {
-    filter: invert() contrast(80%) hue-rotate(180deg);
-  }
-  img,
-  canvas {
-    filter: invert() contrast(120%) hue-rotate(180deg);
-  }
+  background-color: #333;
 }
