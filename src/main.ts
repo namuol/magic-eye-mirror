@@ -2,9 +2,6 @@ import Stats from 'stats.js';
 import * as t from 'three/tsl';
 import * as THREE from 'three/webgpu';
 
-// import fragmentShader from './shaders/fragment-shader.wgsl'; import
-// vertexShader from './shaders/vertex-shader.wgsl';
-
 class App {
   threejs_: THREE.WebGPURenderer | undefined;
   scene_: THREE.Scene | undefined;
@@ -44,16 +41,28 @@ class App {
     // Setup objects:
     {
       const material = new THREE.MeshBasicNodeMaterial();
-      material.fragmentNode = t.vec4(
-        t
-          .float(1)
-          .sub(
-            t
-              .abs(t.positionWorld.zzz.sub(t.cameraPosition.zzz))
-              .div(t.float(t.cameraFar)),
-          ),
-        1,
-      );
+      // material.fragmentNode = t.vec4( t .float(1) .sub( t
+      //   .abs(t.positionWorld.zzz.sub(t.cameraPosition.zzz))
+      //   .div(t.float(t.cameraFar)),
+      //     ),
+      //   1,
+      // );
+      material.fragmentNode = t.wgslFn(`
+        fn main_fragment(
+          cameraPosition: vec4f,
+          positionWorld: vec4f,
+          cameraFar: f32
+        ) -> vec4f {
+          return vec4f(
+            1.0 - (abs(positionWorld.zzz - cameraPosition.zzz) / vec3f(cameraFar)),
+            1.0
+          );
+        }
+      `)({
+        cameraPosition: t.cameraPosition,
+        positionWorld: t.positionWorld,
+        cameraFar: t.cameraFar,
+      });
 
       const brickCountX = 6;
       const brickCountY = 8;
