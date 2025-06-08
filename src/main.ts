@@ -95,6 +95,56 @@ class App {
       }
     }
 
+    // Setup compute texture:
+    {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const storageTexture = new THREE.StorageTexture(width, height);
+      const computeTexture = t.Fn(
+        ({storageTexture}: {storageTexture: THREE.StorageTexture}) => {
+          const posX = t.instanceIndex.mod(width);
+          const posY = t.instanceIndex.div(width);
+          const indexUV = t.uvec2(posX, posY);
+
+          // https://www.shadertoy.com/view/Xst3zN
+
+          const x = t.float(posX).div(50.0);
+          const y = t.float(posY).div(50.0);
+
+          const v1 = x.sin();
+          const v2 = y.sin();
+          const v3 = x.add(y).sin();
+          const v4 = x.mul(x).add(y.mul(y)).sqrt().add(5.0).sin();
+          const v = v1.add(v2, v3, v4);
+
+          const r = v.sin();
+          const g = v.add(Math.PI).sin();
+          const b = v.add(Math.PI).sub(0.5).sin();
+
+          t.textureStore(
+            storageTexture,
+            indexUV,
+            t.vec4(r, g, b, 1),
+          ).toWriteOnly();
+        },
+      );
+
+      // compute
+
+      const computeNode = computeTexture({storageTexture}).compute(
+        width * height,
+      );
+
+      // compute texture
+      this.threejs_.computeAsync(computeNode);
+
+      const material = new THREE.MeshBasicNodeMaterial({color: 0x00ff00});
+      material.colorNode = t.texture(storageTexture);
+
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+      this.scene_.add(plane);
+    }
+
     this.onWindowResize_();
     this.raf_();
   }
