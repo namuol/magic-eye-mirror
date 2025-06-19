@@ -88,12 +88,6 @@ class Level {
       const brickHeight = availableHeight / brickCountY;
       const brickDepth = availableDepth / brickCountZ;
 
-      const debugCube = new THREE.Mesh(
-        new THREE.BoxGeometry(0.2, 0.2, 0.2),
-        material,
-      );
-      this.scene.add(debugCube);
-
       const left = -backWall.width / 2;
       const bottom = -backWall.height / 2;
       const back = backWall.mesh.position.z;
@@ -148,6 +142,17 @@ class Autostereogram {
     this.scene = new THREE.Scene();
 
     const outputTexture = new THREE.StorageTexture(width, height);
+    // In theory this might set our texture to `u32uint`, which should be able
+    // to do `read_write`:
+    //
+    // ```
+    // outputTexture.type = THREE.UnsignedIntType;
+    // outputTexture.format = THREE.RedIntegerFormat;
+    // ```
+    //
+    // Source:
+    // https://discourse.threejs.org/t/how-to-pass-32-bit-unsigned-integer-to-a-custom-shader-using-datatexture/64056
+
     outputTexture.minFilter = THREE.NearestFilter;
     outputTexture.magFilter = THREE.NearestFilter;
 
@@ -164,7 +169,7 @@ class Autostereogram {
     const maxDisparity = t.uint(Math.floor(width * 0.2));
 
     const computeTexture = t.Fn(() => {
-      const y = t.instanceIndex;
+      const y = t.globalId.x;
       const start = t.uint(0).mul(width);
       t.Loop(width, ({i}) => {
         const x = t.uint(i);
@@ -221,7 +226,7 @@ class Autostereogram {
       });
     });
     this.rand = t.uniform(t.vec3(0));
-    this.computeNode = computeTexture().compute(height);
+    this.computeNode = computeTexture().compute(height, [1]);
 
     const material = new THREE.MeshBasicNodeMaterial({color: 0x00ff00});
     material.colorNode = t.texture(outputTexture);
@@ -255,7 +260,7 @@ class App {
   autostereogram: Autostereogram;
   stats: Stats;
   renderTarget: THREE.RenderTarget;
-  renderAutoStereogram: boolean = false;
+  renderAutoStereogram: boolean = true;
   gui: GUI;
   constructor(device: GPUDevice) {
     this.stats = new Stats();
