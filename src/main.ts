@@ -1,3 +1,4 @@
+import GUI from 'lil-gui';
 import Stats from 'stats.js';
 import {OrbitControls} from 'three/examples/jsm/Addons.js';
 import * as t from 'three/tsl';
@@ -47,38 +48,37 @@ class Level {
       backWall.mesh.position.x = 0;
       backWall.mesh.position.y = 0;
       backWall.mesh.position.z = -0.5;
-      this.scene.add(backWall.mesh);
-      this.scene.add(new THREE.AxesHelper());
+      // this.scene.add(backWall.mesh); this.scene.add(new THREE.AxesHelper());
     }
 
     // Setup objects:
     {
       const material = new THREE.MeshBasicNodeMaterial();
-      // material.fragmentNode = t.vec4( t .float(1) .sub( t
-      //   .abs(t.positionWorld.zzz.sub(t.cameraPosition.zzz))
-      //   .div(t.float(t.cameraFar)),
-      //     ),
-      //   1,
-      // );
-      material.fragmentNode = t.wgslFn(`
-        fn main_fragment(
-          cameraPosition: vec4f,
-          positionWorld: vec4f,
-          cameraFar: f32
-        ) -> vec4f {
-          return vec4f(
-            1.0 - (abs(positionWorld.zzz - cameraPosition.zzz) / vec3f(cameraFar)),
-            1.0
-          );
-        }
-      `)({
-        cameraPosition: t.cameraPosition,
-        positionWorld: t.positionWorld,
-        cameraFar: t.cameraFar,
-      });
+      const r = t.rand(t.uv()).sub(0.5).mul(0.1);
+      material.fragmentNode = t.vec4(
+        t
+          .float(1)
+          .sub(
+            t
+              .length(t.positionWorld.sub(t.cameraPosition))
+              .div(t.vec3(t.cameraFar)),
+          )
+          .add(r),
+        1,
+      );
+      // material.fragmentNode = t.wgslFn(` fn main_fragment( cameraPosition:
+      //   vec4f, positionWorld: vec4f, cameraFar: f32 ) -> vec4f { return
+      //   rand(vec2(0,0)) + vec4f( 1.0 - (length(positionWorld -
+      //   cameraPosition) / vec3f(cameraFar)), 1.0
+      //     );
+      //   }
+      // `)({
+      //   cameraPosition: t.cameraPosition, positionWorld: t.positionWorld,
+      //   cameraFar: t.cameraFar,
+      // });
 
       const brickCountX = 5;
-      const brickCountY = 10;
+      const brickCountY = 5;
       const brickCountZ = 4;
       const gap = 0.03;
       const availableWidth = backWall.width - (brickCountX + 1) * gap;
@@ -87,6 +87,12 @@ class Level {
       const brickWidth = availableWidth / brickCountX;
       const brickHeight = availableHeight / brickCountY;
       const brickDepth = availableDepth / brickCountZ;
+
+      const debugCube = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.2, 0.2),
+        material,
+      );
+      this.scene.add(debugCube);
 
       const left = -backWall.width / 2;
       const bottom = -backWall.height / 2;
@@ -130,56 +136,95 @@ class Autostereogram {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   computeNode: THREE.ComputeNode;
+  rand: t.ShaderNodeObject<THREE.UniformNode<t.ShaderNodeObject<THREE.Node>>>;
 
   constructor(inputTexture: THREE.Texture) {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const scale = 1;
+    const width = inputTexture.image.width / scale;
+    const height = inputTexture.image.height / scale;
 
     this.camera = new THREE.OrthographicCamera(0, 1, 1, 0, 0.1, 1000);
     this.camera.position.set(0, 0, 1);
     this.scene = new THREE.Scene();
 
-    const storageTexture = new THREE.StorageTexture(width, height);
+    const outputTexture = new THREE.StorageTexture(width, height);
+    outputTexture.minFilter = THREE.NearestFilter;
+    outputTexture.magFilter = THREE.NearestFilter;
 
-    const computeTexture = t.Fn(
-      ({
-        inputTexture,
-        storageTexture,
-      }: {
-        inputTexture: THREE.Texture;
-        storageTexture: THREE.Texture;
-      }) => {
-        const posX = t.instanceIndex.mod(width);
-        const posY = t.instanceIndex.div(width);
-        const indexUV = t.uvec2(posX, posY);
-        // For some reason y coord needs to be flipped
-        const outputUV = t.uvec2(posX, t.int(height).sub(posY));
+    const offsetBuffer = t.instancedArray(width, 'uint');
 
-        // https://www.shadertoy.com/view/Xst3zN
+    const noise3 = t.Fn(({uv}: {uv: t.ShaderNodeObject<THREE.Node>}) => {
+      const r = t.rand(uv.add(this.rand.mul(10000).xy));
+      const g = t.rand(uv.add(this.rand.mul(20000).xy));
+      const b = t.rand(uv.add(this.rand.mul(30000).xy));
+      return t.vec3(r, g, b);
+    });
 
-        const color = t.textureLoad(inputTexture, indexUV).rgba;
-        t.textureStore(storageTexture, outputUV, color).toWriteOnly();
+    const minDisparity = t.uint(Math.floor(width * 0.15));
+    const maxDisparity = t.uint(Math.floor(width * 0.2));
 
-        // const x = t.float(posX).div(50.0); const y = t.float(posY).div(50.0);
+    const computeTexture = t.Fn(() => {
+      const y = t.instanceIndex;
+      const start = t.uint(0).mul(width);
+      t.Loop(width, ({i}) => {
+        const x = t.uint(i);
+        const inputUV = t.uvec2(x.mul(scale), y.mul(scale));
+        const outputUV = t.uvec2(x, t.float(height).sub(y));
 
-        // const v1 = x.sin(); const v2 = y.sin(); const v3 = x.add(y).sin();
-        // const v4 = x.mul(x).add(y.mul(y)).sqrt().add(5.0).sin(); const v =
-        // v1.add(v2, v3, v4);
+        // Adapted from this code:
+        //
+        // ```
+        // for (let x = 0; x < output.width; ++x) {
+        //   const disparity = hiddenImage.get(x, y)[0] / 255;
+        //   const offset = Math.floor(disparity * (maxDisparity - minDisparity));
+        //   if (x < minDisparity) {
+        //     output.set(x, y, noise.get((x + offset) % minDisparity, y));
+        //   } else {
+        //     output.set(x, y, output.get(x + offset - minDisparity, y));
+        //   }
+        // }
+        // ```
 
-        // const r = v.sin(); const g = v.add(Math.PI).sin(); const b =
-        // v.add(Math.PI).sub(0.5).sin();
+        const disparity = t
+          .textureLoad(inputTexture, inputUV)
+          .add(noise3({uv: outputUV}).xxx.mul(0.02))
+          .x.div(1);
 
-        // t.textureStore( storageTexture, indexUV, t.vec4(r, g, b, 1),
-        //   ).toWriteOnly();
-      },
-    );
+        const offset = t.uint(
+          t.floor(disparity.mul(maxDisparity.sub(minDisparity))),
+        );
 
-    this.computeNode = computeTexture({inputTexture, storageTexture}).compute(
-      width * height,
-    );
+        const offsetBufferCoord = start.add(x);
+        offsetBuffer.element(offsetBufferCoord).assign(0);
+        t.If(x.lessThan(minDisparity), () => {
+          const xoffset = t.uint(x.add(offset).mod(minDisparity));
+          offsetBuffer.element(offsetBufferCoord).assign(xoffset);
+        }).Else(() => {
+          const xoffset = t.uint(
+            offsetBuffer.element(x.add(offset).sub(minDisparity)),
+          );
+          offsetBuffer.element(offsetBufferCoord).assign(xoffset);
+        });
+      });
+
+      t.Loop(width, ({i}) => {
+        const outputUV = t.uvec2(i, t.float(height).sub(y));
+
+        const offsetBufferCoord = start.add(i);
+        t.textureStore(
+          outputTexture,
+          outputUV,
+          noise3({
+            uv: t.vec2(offsetBuffer.element(offsetBufferCoord), y),
+          }),
+        ).toWriteOnly();
+      });
+    });
+    this.rand = t.uniform(t.vec3(0));
+    this.computeNode = computeTexture().compute(height);
 
     const material = new THREE.MeshBasicNodeMaterial({color: 0x00ff00});
-    material.colorNode = t.texture(storageTexture);
+    material.colorNode = t.texture(outputTexture);
 
     const geometry = new THREE.PlaneGeometry(1, 1);
     const plane = new THREE.Mesh(geometry, material);
@@ -193,6 +238,15 @@ class Autostereogram {
     // (-frustumHeight * aspect) / 2; this.camera.right = (frustumHeight *
     // aspect) / 2; this.camera.updateProjectionMatrix();
   }
+
+  update() {
+    // @ts-expect-error - type issues
+    this.rand.value.setX(Math.random());
+    // @ts-expect-error - type issues
+    this.rand.value.setY(Math.random());
+    // @ts-expect-error - type issues
+    this.rand.value.setZ(Math.random());
+  }
 }
 
 class App {
@@ -201,12 +255,19 @@ class App {
   autostereogram: Autostereogram;
   stats: Stats;
   renderTarget: THREE.RenderTarget;
-
-  constructor() {
+  renderAutoStereogram: boolean = false;
+  gui: GUI;
+  constructor(device: GPUDevice) {
     this.stats = new Stats();
+    {
+      this.gui = new GUI({});
+      this.gui.add(this, 'renderAutoStereogram');
+    }
     this.renderer = new THREE.WebGPURenderer({
       canvas: document.getElementById('canvas')! as HTMLCanvasElement,
+      device,
     });
+
     document.body.appendChild(this.renderer.domElement);
     document.body.appendChild(this.stats.dom);
 
@@ -238,14 +299,19 @@ class App {
     requestAnimationFrame(async () => {
       this.stats.begin();
       this.level.update();
-      this.renderer.setRenderTarget(this.renderTarget);
+      if (this.renderAutoStereogram) {
+        this.renderer.setRenderTarget(this.renderTarget);
+      }
       await this.renderer.renderAsync(this.level.scene, this.level.camera);
-      await this.renderer.computeAsync(this.autostereogram.computeNode);
-      this.renderer.setRenderTarget(null);
-      await this.renderer.renderAsync(
-        this.autostereogram.scene,
-        this.autostereogram.camera,
-      );
+      if (this.renderAutoStereogram) {
+        this.autostereogram.update();
+        await this.renderer.computeAsync(this.autostereogram.computeNode);
+        this.renderer.setRenderTarget(null);
+        await this.renderer.renderAsync(
+          this.autostereogram.scene,
+          this.autostereogram.camera,
+        );
+      }
       this.stats.end();
 
       this.raf_();
@@ -254,6 +320,14 @@ class App {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  const app = new App();
+  const adapter = (await navigator.gpu.requestAdapter())!;
+  const device = (await adapter.requestDevice({
+    requiredLimits: {
+      maxComputeWorkgroupSizeX: 1024,
+      maxComputeInvocationsPerWorkgroup: 1024,
+    },
+    requiredFeatures: ['bgra8unorm-storage'],
+  }))!;
+  const app = new App(device);
   await app.run();
 });

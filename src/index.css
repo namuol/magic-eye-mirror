@@ -4,3 +4,7 @@ html {
   background-color: #333;
   overflow: hidden;
 }
+
+canvas {
+  image-rendering: pixelated;
+}
