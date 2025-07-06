@@ -1,3 +1,7 @@
+import {
+  DepthEstimationPipelineOutput,
+  pipeline,
+} from '@huggingface/transformers';
 import GUI from 'lil-gui';
 import Stats from 'stats.js';
 import {OrbitControls} from 'three/examples/jsm/Addons.js';
@@ -26,7 +30,7 @@ class Level {
       document.getElementById('canvas')!,
     );
 
-    this.scene = new THREE.Scene();
+    const scene = (this.scene = new THREE.Scene());
     this.scene.background = new THREE.Color('#000');
 
     // Debug view
@@ -128,6 +132,72 @@ class Level {
           }
         }
       }
+
+      // TODO: Could we put this into a separate module or something?
+      (async () => {
+        const width = 256;
+        const height = 256;
+
+        const depthCanvas = new OffscreenCanvas(width, height);
+        const depthCtx = depthCanvas.getContext('2d')!;
+        depthCtx.fillStyle = '#f0f';
+        depthCtx.fillRect(0, 0, width, height);
+
+        const videoCanvas = new OffscreenCanvas(width, height);
+        const videoCtx = videoCanvas.getContext('2d')!;
+
+        const constraints = {
+          video: {width: 720, height: 720, facingMode: 'user'},
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = document.createElement('video');
+
+        video.srcObject = stream;
+        video.play();
+
+        const texture = new THREE.CanvasTexture(depthCanvas);
+        const geometry = new THREE.PlaneGeometry(width, height);
+        geometry.scale(-1.5 / width, 1.5 / width, 1.5 / width);
+        const material = new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+        async function hasFp16() {
+          try {
+            const adapter = await navigator.gpu.requestAdapter();
+            const result = adapter!.features.has('shader-f16');
+            if (result) {
+              console.log('has fp16');
+            } else {
+              console.log('does not have fp16');
+            }
+            return result;
+          } catch {
+            return false;
+          }
+        }
+        const depthEstimator = await pipeline(
+          'depth-estimation',
+          'onnx-community/depth-anything-v2-small',
+          {
+            dtype: (await hasFp16()) ? 'fp16' : 'fp32',
+            device: 'webgpu',
+          },
+        );
+
+        async function updateCanvas() {
+          videoCtx.drawImage(video, 0, 0, width, height);
+          const {depth} = (await depthEstimator(
+            videoCanvas,
+          )) as DepthEstimationPipelineOutput;
+          depthCtx.drawImage(depth.toCanvas(), 0, 0, width, height);
+          texture.needsUpdate = true;
+          requestAnimationFrame(updateCanvas);
+        }
+        updateCanvas();
+      })();
     }
   }
 
