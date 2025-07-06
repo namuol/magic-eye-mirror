@@ -10,6 +10,7 @@ class Level {
   bricks: THREE.Mesh[] = [];
   controls: OrbitControls;
   noiseFactor = t.uniform(t.float(0.1));
+  rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(
@@ -54,8 +55,16 @@ class Level {
 
     // Setup objects:
     {
+      this.rand = t.uniform(t.vec3(0));
+      const noise3 = t.Fn(({uv}: {uv: t.ShaderNodeObject<THREE.Node>}) => {
+        const r = t.rand(uv.add(this.rand));
+        const g = t.rand(uv.add(this.rand));
+        const b = t.rand(uv.add(this.rand));
+        return t.vec3(r, g, b);
+      });
+
       const material = new THREE.MeshBasicNodeMaterial();
-      const r = t.rand(t.uv()).sub(0.5).mul(this.noiseFactor);
+      const r = noise3({uv: t.uv()}).x.sub(0.5).mul(this.noiseFactor);
       // const r = t.float(0);
       material.fragmentNode = t.vec4(
         t
@@ -129,6 +138,9 @@ class Level {
 
   update() {
     this.controls.update();
+    this.rand.value.setX(Math.random());
+    this.rand.value.setY(Math.random());
+    this.rand.value.setZ(Math.random());
   }
 }
 
@@ -162,7 +174,7 @@ class Autostereogram {
     outputTexture.minFilter = THREE.NearestFilter;
     outputTexture.magFilter = THREE.NearestFilter;
 
-    const offsetBuffer = t.workgroupArray('uint', width);
+    const offsetBuffer = t.workgroupArray('float', width);
 
     const noise3 = t.Fn(({uv}: {uv: t.ShaderNodeObject<THREE.Node>}) => {
       const r = t.rand(uv.add(this.rand.mul(10000).xy));
@@ -176,14 +188,14 @@ class Autostereogram {
     const Y_COUNT = 1;
 
     const computeTexture = t.Fn(() => {
-      const yOffset = t.uint(0).toVar('yOffset');
+      const yOffset = t.float(0).toVar('yOffset');
       t.Loop(yOffset.lessThan(Y_COUNT), () => {
-        const y = t.globalId.x.mul(Y_COUNT).add(yOffset);
+        const y = t.float(t.globalId.x.mul(Y_COUNT).add(yOffset));
         const start = t.float(0).mul(width);
         const x = t.float(0).toVar('x');
         t.Loop(x.lessThan(width), () => {
           const inputUV = t.vec2(x.mul(scale), y.mul(scale));
-          const outputUV = t.vec2(x, t.float(height).sub(y));
+          // const outputUV = t.vec2(x, t.float(height).sub(y));
 
           // Adapted from this code:
           //
@@ -199,10 +211,14 @@ class Autostereogram {
           // }
           // ```
 
-          const disparity = t
-            .textureLoad(inputTexture, inputUV)
-            .add(noise3({uv: outputUV}).xxx.mul(0.02))
-            .x.div(1);
+          // We should use the full 32 bits of texture data here to store the
+          // depth with much more precision!
+          const disparity = t.float(
+            t
+              .textureLoad(inputTexture, inputUV)
+              // .add(noise3({uv: outputUV}).xxx.mul(0.02))
+              .x.div(1),
+          );
 
           const offset = disparity.mul(maxDisparity.sub(minDisparity));
 
