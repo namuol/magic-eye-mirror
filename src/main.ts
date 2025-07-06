@@ -151,7 +151,7 @@ class Autostereogram {
   rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
 
   constructor(inputTexture: THREE.Texture) {
-    const scale = 3;
+    const scale = 1;
     const width = inputTexture.image.width / scale;
     const height = inputTexture.image.height / scale;
 
@@ -247,7 +247,7 @@ class Autostereogram {
             outputTexture,
             outputUV,
             noise3({
-              uv: offsetUV,
+              uv: t.uvec2(offsetUV.div(6)),
             }),
             // t.vec4( t.div(t.float(offsetUV.x), t.float(width)),
             //   t.div(t.float(offsetUV.y), t.float(height)),
@@ -298,13 +298,14 @@ class App {
   renderTarget: THREE.RenderTarget;
   renderAutoStereogram: boolean = true;
   gui: GUI;
-  noiseFactor: number = 0.1;
+  noiseFactor: number = 0.0;
 
   constructor(device: GPUDevice) {
     this.stats = new Stats();
     this.renderer = new THREE.WebGPURenderer({
       canvas: document.getElementById('canvas')! as HTMLCanvasElement,
       device,
+      antialias: true,
     });
 
     document.body.appendChild(this.renderer.domElement);
