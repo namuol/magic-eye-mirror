@@ -55,6 +55,7 @@ class Level {
     {
       const material = new THREE.MeshBasicNodeMaterial();
       const r = t.rand(t.uv()).sub(0.5).mul(0.1);
+      // const r = t.float(0);
       material.fragmentNode = t.vec4(
         t
           .float(1)
@@ -66,6 +67,8 @@ class Level {
           .add(r),
         1,
       );
+
+      // ```
       // material.fragmentNode = t.wgslFn(` fn main_fragment( cameraPosition:
       //   vec4f, positionWorld: vec4f, cameraFar: f32 ) -> vec4f { return
       //   rand(vec2(0,0)) + vec4f( 1.0 - (length(positionWorld -
@@ -73,14 +76,16 @@ class Level {
       //     );
       //   }
       // `)({
-      //   cameraPosition: t.cameraPosition, positionWorld: t.positionWorld,
+      //   cameraPosition: t.cameraPosition,
+      //   positionWorld: t.positionWorld,
       //   cameraFar: t.cameraFar,
       // });
+      // ```
 
       const brickCountX = 5;
       const brickCountY = 5;
-      const brickCountZ = 4;
-      const gap = 0.03;
+      const brickCountZ = 2;
+      const gap = 0.05;
       const availableWidth = backWall.width - (brickCountX + 1) * gap;
       const availableHeight = backWall.height - (brickCountY + 1) * gap;
       const availableDepth = 0.5 - (brickCountZ + 1) * gap;
@@ -130,10 +135,10 @@ class Autostereogram {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   computeNode: THREE.ComputeNode;
-  rand: t.ShaderNodeObject<THREE.UniformNode<t.ShaderNodeObject<THREE.Node>>>;
+  rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
 
   constructor(inputTexture: THREE.Texture) {
-    const scale = 1;
+    const scale = 3;
     const width = inputTexture.image.width / scale;
     const height = inputTexture.image.height / scale;
 
@@ -156,7 +161,7 @@ class Autostereogram {
     outputTexture.minFilter = THREE.NearestFilter;
     outputTexture.magFilter = THREE.NearestFilter;
 
-    const offsetBuffer = t.instancedArray(width, 'uint');
+    const offsetBuffer = t.workgroupArray('uint', width);
 
     const noise3 = t.Fn(({uv}: {uv: t.ShaderNodeObject<THREE.Node>}) => {
       const r = t.rand(uv.add(this.rand.mul(10000).xy));
@@ -165,68 +170,85 @@ class Autostereogram {
       return t.vec3(r, g, b);
     });
 
-    const minDisparity = t.uint(Math.floor(width * 0.15));
-    const maxDisparity = t.uint(Math.floor(width * 0.2));
+    const minDisparity = t.float(width * 0.15);
+    const maxDisparity = t.float(width * 0.2);
+    const Y_COUNT = 1;
 
     const computeTexture = t.Fn(() => {
-      const y = t.globalId.x;
-      const start = t.uint(0).mul(width);
-      t.Loop(width, ({i}) => {
-        const x = t.uint(i);
-        const inputUV = t.uvec2(x.mul(scale), y.mul(scale));
-        const outputUV = t.uvec2(x, t.float(height).sub(y));
+      const yOffset = t.uint(0).toVar('yOffset');
+      t.Loop(yOffset.lessThan(Y_COUNT), () => {
+        const y = t.globalId.x.mul(Y_COUNT).add(yOffset);
+        const start = t.float(0).mul(width);
+        const x = t.float(0).toVar('x');
+        t.Loop(x.lessThan(width), () => {
+          const inputUV = t.vec2(x.mul(scale), y.mul(scale));
+          const outputUV = t.vec2(x, t.float(height).sub(y));
 
-        // Adapted from this code:
-        //
-        // ```
-        // for (let x = 0; x < output.width; ++x) {
-        //   const disparity = hiddenImage.get(x, y)[0] / 255;
-        //   const offset = Math.floor(disparity * (maxDisparity - minDisparity));
-        //   if (x < minDisparity) {
-        //     output.set(x, y, noise.get((x + offset) % minDisparity, y));
-        //   } else {
-        //     output.set(x, y, output.get(x + offset - minDisparity, y));
-        //   }
-        // }
-        // ```
+          // Adapted from this code:
+          //
+          // ```
+          // for (let x = 0; x < output.width; ++x) {
+          //   const disparity = hiddenImage.get(x, y)[0] / 255;
+          //   const offset = Math.floor(disparity * (maxDisparity - minDisparity));
+          //   if (x < minDisparity) {
+          //     output.set(x, y, noise.get((x + offset) % minDisparity, y));
+          //   } else {
+          //     output.set(x, y, output.get(x + offset - minDisparity, y));
+          //   }
+          // }
+          // ```
 
-        const disparity = t
-          .textureLoad(inputTexture, inputUV)
-          .add(noise3({uv: outputUV}).xxx.mul(0.02))
-          .x.div(1);
+          const disparity = t
+            .textureLoad(inputTexture, inputUV)
+            .add(noise3({uv: outputUV}).xxx.mul(0.02))
+            .x.div(1);
 
-        const offset = t.uint(
-          t.floor(disparity.mul(maxDisparity.sub(minDisparity))),
-        );
+          const offset = disparity.mul(maxDisparity.sub(minDisparity));
 
-        const offsetBufferCoord = start.add(x);
-        offsetBuffer.element(offsetBufferCoord).assign(0);
-        t.If(x.lessThan(minDisparity), () => {
-          const xoffset = t.uint(x.add(offset).mod(minDisparity));
-          offsetBuffer.element(offsetBufferCoord).assign(xoffset);
-        }).Else(() => {
-          const xoffset = t.uint(
-            offsetBuffer.element(x.add(offset).sub(minDisparity)),
-          );
-          offsetBuffer.element(offsetBufferCoord).assign(xoffset);
+          const offsetBufferCoord = start.add(x);
+          offsetBuffer.element(offsetBufferCoord).assign(0);
+          t.If(x.lessThan(minDisparity), () => {
+            const xoffset = x.add(offset).mod(minDisparity);
+            offsetBuffer.element(offsetBufferCoord).assign(xoffset);
+          }).Else(() => {
+            const xoffset = offsetBuffer.element(
+              x.add(offset).sub(minDisparity),
+            );
+            offsetBuffer.element(offsetBufferCoord).assign(xoffset);
+          });
+          x.addAssign(1);
         });
-      });
 
-      t.Loop(width, ({i}) => {
-        const outputUV = t.uvec2(i, t.float(height).sub(y));
+        x.assign(0);
+        t.Loop(x.lessThan(width), () => {
+          const outputUV = t.uvec2(x, t.float(height).sub(y));
 
-        const offsetBufferCoord = start.add(i);
-        t.textureStore(
-          outputTexture,
-          outputUV,
-          noise3({
-            uv: t.vec2(offsetBuffer.element(offsetBufferCoord), y),
-          }),
-        ).toWriteOnly();
+          const offsetBufferCoord = start.add(x);
+          const offsetUV = t.vec2(offsetBuffer.element(offsetBufferCoord), y);
+          // const offsetUV = outputUV;
+          t.textureStore(
+            outputTexture,
+            outputUV,
+            noise3({
+              uv: offsetUV,
+            }),
+            // t.vec4( t.div(t.float(offsetUV.x), t.float(width)),
+            //   t.div(t.float(offsetUV.y), t.float(height)),
+            //   t.div(t.float(offsetUV.y), t.float(height)), 1,
+            // ),
+          ).toWriteOnly();
+
+          x.addAssign(1);
+        });
+
+        yOffset.addAssign(1);
       });
     });
+
     this.rand = t.uniform(t.vec3(0));
-    this.computeNode = computeTexture().compute(height, [1]);
+    this.computeNode = computeTexture().compute(Math.ceil(height / Y_COUNT), [
+      1,
+    ]);
 
     const material = new THREE.MeshBasicNodeMaterial({color: 0x00ff00});
     material.colorNode = t.texture(outputTexture);
@@ -245,11 +267,8 @@ class Autostereogram {
   }
 
   update() {
-    // @ts-expect-error - type issues
     this.rand.value.setX(Math.random());
-    // @ts-expect-error - type issues
     this.rand.value.setY(Math.random());
-    // @ts-expect-error - type issues
     this.rand.value.setZ(Math.random());
   }
 }

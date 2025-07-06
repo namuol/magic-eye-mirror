@@ -20,12 +20,12 @@
   "dependencies": {
     "lil-gui": "^0.20.0",
     "stats.js": "^0.17.0",
-    "three": "0.177.0"
+    "three": "0.178.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@stkb/rewrap": "^0.1.0",
-    "@types/three": "^0.174.0",
+    "@types/three": "^0.178.0",
     "eslint": "^9.9.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^15.9.0",
