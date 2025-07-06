@@ -9,6 +9,7 @@ class Level {
   scene: THREE.Scene;
   bricks: THREE.Mesh[] = [];
   controls: OrbitControls;
+  noiseFactor = t.uniform(t.float(0.1));
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(
@@ -54,7 +55,7 @@ class Level {
     // Setup objects:
     {
       const material = new THREE.MeshBasicNodeMaterial();
-      const r = t.rand(t.uv()).sub(0.5).mul(0.1);
+      const r = t.rand(t.uv()).sub(0.5).mul(this.noiseFactor);
       // const r = t.float(0);
       material.fragmentNode = t.vec4(
         t
@@ -84,8 +85,8 @@ class Level {
 
       const brickCountX = 5;
       const brickCountY = 5;
-      const brickCountZ = 2;
-      const gap = 0.05;
+      const brickCountZ = 3;
+      const gap = 0.03;
       const availableWidth = backWall.width - (brickCountX + 1) * gap;
       const availableHeight = backWall.height - (brickCountY + 1) * gap;
       const availableDepth = 0.5 - (brickCountZ + 1) * gap;
@@ -281,12 +282,10 @@ class App {
   renderTarget: THREE.RenderTarget;
   renderAutoStereogram: boolean = true;
   gui: GUI;
+  noiseFactor: number = 0.1;
+
   constructor(device: GPUDevice) {
     this.stats = new Stats();
-    {
-      this.gui = new GUI({});
-      this.gui.add(this, 'renderAutoStereogram');
-    }
     this.renderer = new THREE.WebGPURenderer({
       canvas: document.getElementById('canvas')! as HTMLCanvasElement,
       device,
@@ -306,6 +305,12 @@ class App {
     this.level = new Level();
     this.renderTarget = new THREE.RenderTarget(innerWidth, innerHeight);
     this.autostereogram = new Autostereogram(this.renderTarget.texture);
+
+    {
+      this.gui = new GUI({});
+      this.gui.add(this, 'renderAutoStereogram');
+      this.gui.add(this, 'noiseFactor');
+    }
   }
 
   async run() {
@@ -323,6 +328,7 @@ class App {
     requestAnimationFrame(async () => {
       this.stats.begin();
       this.level.update();
+      this.level.noiseFactor.value = this.noiseFactor;
       if (this.renderAutoStereogram) {
         this.renderer.setRenderTarget(this.renderTarget);
       }
