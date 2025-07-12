@@ -39,14 +39,14 @@ a {
 
 #viewing-tips-link {
   position: fixed;
-  top: 16px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
   background: rgba(0, 0, 0, 0.85);
   color: #fff;
   padding: 3px 10px;
-  border-radius: 20px;
+  border-radius: 10px;
   font-size: 0.85rem;
   text-decoration: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -54,4 +54,17 @@ a {
 }
 #viewing-tips-link:hover {
   background: rgba(30, 30, 30, 0.95);
+}
+
+.lil-gui.root {
+  top: 4px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lil-gui.root * {
+  font-family: Monaco, monospace !important;
+  font-size: 0.85rem !important;
+  font-weight: normal !important;
+  color: white !important;
 }

@@ -59,7 +59,6 @@
     </a>
 
     <script type="module">
-      import {getApp} from '/src/main.ts';
       document.getElementById('preloader').hidden = true;
       if (!navigator.gpu) {
         document.getElementById('canvas').hidden = true;
@@ -76,6 +75,7 @@
           .addEventListener('click', async () => {
             document.getElementById('warning').hidden = true;
             document.getElementById('loader').hidden = false;
+            const {getApp} = await import('/src/main.ts');
             const app = await getApp();
             await app.initialize();
             document.getElementById('messages').hidden = true;

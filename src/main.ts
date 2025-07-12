@@ -33,7 +33,7 @@ class Level {
     this.rand = t.uniform(t.vec3(0));
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#000');
+    this.scene.background = new THREE.Color('#fff');
 
     // Debug view
     let backWall: {
