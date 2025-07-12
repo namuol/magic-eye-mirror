@@ -10,8 +10,6 @@ to produce the input depth map.
 
 ![](/screenshot.png)
 
-![](/video.mov)
-
 ## Viewing tips
 
 This is a standard "divergent" magic-eye-style autostereogram, which means you
