@@ -15,6 +15,7 @@ class Level {
   controls: OrbitControls;
   noiseFactor = t.uniform(t.float(0.1));
   rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
+  freeze: boolean = false;
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(
@@ -108,15 +109,17 @@ class Level {
       },
     );
 
-    async function updateCanvas() {
-      videoCtx.drawImage(video, 0, 0, width, height);
-      const {depth} = (await depthEstimator(
-        videoCanvas,
-      )) as DepthEstimationPipelineOutput;
-      depthCtx.drawImage(depth.toCanvas(), 0, 0, width, height);
-      texture.needsUpdate = true;
+    const updateCanvas = async () => {
+      if (!this.freeze) {
+        videoCtx.drawImage(video, 0, 0, width, height);
+        const {depth} = (await depthEstimator(
+          videoCanvas,
+        )) as DepthEstimationPipelineOutput;
+        depthCtx.drawImage(depth.toCanvas(), 0, 0, width, height);
+        texture.needsUpdate = true;
+      }
       requestAnimationFrame(updateCanvas);
-    }
+    };
     updateCanvas();
   }
 
@@ -125,7 +128,7 @@ class Level {
     this.camera.updateProjectionMatrix();
   }
 
-  update() {
+  async update() {
     this.controls.update();
     this.rand.value.setX(Math.random());
     this.rand.value.setY(Math.random());
@@ -286,6 +289,8 @@ class App {
   stats: Stats;
   renderTarget: THREE.RenderTarget;
   render_depth: boolean = false;
+  show_fps: boolean = false;
+  freeze: boolean = false;
   gui: GUI;
   noiseFactor: number = 0.0;
 
@@ -325,9 +330,10 @@ class App {
   run() {
     this.onWindowResize_();
     this.raf_();
-    this.stats.dom.hidden = false;
 
     this.gui.add(this, 'render_depth');
+    this.gui.add(this, 'show_fps');
+    this.gui.add(this, 'freeze');
     // this.gui.add(this, 'noiseFactor');
     this.gui.show();
   }
@@ -340,21 +346,25 @@ class App {
 
   raf_() {
     requestAnimationFrame(async () => {
+      this.stats.dom.hidden = !this.show_fps;
       this.stats.begin();
-      this.level.update();
-      this.level.noiseFactor.value = this.noiseFactor;
-      if (!this.render_depth) {
-        this.renderer.setRenderTarget(this.renderTarget);
-      }
-      await this.renderer.renderAsync(this.level.scene, this.level.camera);
-      if (!this.render_depth) {
-        this.autostereogram.update();
-        await this.renderer.computeAsync(this.autostereogram.computeNode);
-        this.renderer.setRenderTarget(null);
-        await this.renderer.renderAsync(
-          this.autostereogram.scene,
-          this.autostereogram.camera,
-        );
+      this.level.freeze = this.freeze;
+      if (!this.freeze) {
+        await this.level.update();
+        this.level.noiseFactor.value = this.noiseFactor;
+        if (!this.render_depth) {
+          this.renderer.setRenderTarget(this.renderTarget);
+        }
+        await this.renderer.renderAsync(this.level.scene, this.level.camera);
+        if (!this.render_depth) {
+          this.autostereogram.update();
+          await this.renderer.computeAsync(this.autostereogram.computeNode);
+          this.renderer.setRenderTarget(null);
+          await this.renderer.renderAsync(
+            this.autostereogram.scene,
+            this.autostereogram.camera,
+          );
+        }
       }
       this.stats.end();
 
