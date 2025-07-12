@@ -36,3 +36,22 @@ a {
   color: cornflowerblue;
   text-decoration: none;
 }
+
+#viewing-tips-link {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: background 0.2s;
+}
+#viewing-tips-link:hover {
+  background: rgba(30, 30, 30, 0.95);
+}

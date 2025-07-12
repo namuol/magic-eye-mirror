@@ -44,6 +44,16 @@
       </div>
     </div>
 
+    <a
+      id="viewing-tips-link"
+      href="https://github.com/namuol/magic-eye-yourself#viewing-tips"
+      target="_blank"
+      rel="noopener"
+      hidden
+    >
+      👀 Viewing tips
+    </a>
+
     <script type="module">
       import {getApp} from '/src/main.ts';
       if (!navigator.gpu) {
@@ -66,6 +76,7 @@
             document.getElementById('messages').hidden = true;
             document.getElementById('canvas').hidden = false;
             app.run();
+            document.getElementById('viewing-tips-link').hidden = false;
           });
       }
     </script>
