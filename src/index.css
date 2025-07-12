@@ -60,11 +60,19 @@ a {
   top: 4px;
   border-radius: 10px;
   overflow: hidden;
-}
+  max-width: 20ch;
 
-.lil-gui.root * {
-  font-family: Monaco, monospace !important;
-  font-size: 0.85rem !important;
-  font-weight: normal !important;
-  color: white !important;
+  & * {
+    font-family: Monaco, monospace !important;
+    font-size: 0.85rem !important;
+    font-weight: normal !important;
+    color: white !important;
+  }
+
+  & .controller.boolean {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 1fr auto;
+    padding: 0 10px;
+  }
 }
