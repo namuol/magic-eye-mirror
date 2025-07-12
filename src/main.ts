@@ -16,6 +16,7 @@ class Level {
   noiseFactor = t.uniform(t.float(0.1));
   rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
   freeze: boolean = false;
+  render_depth: boolean = false;
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(
@@ -60,6 +61,8 @@ class Level {
     }
   }
 
+  mesh: THREE.Mesh<THREE.PlaneGeometry> | null = null;
+
   async initialize() {
     // Setup objects: TODO: Could we put this into a separate module or
     // something?
@@ -91,6 +94,7 @@ class Level {
       side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(geometry, material);
+    this.mesh = mesh;
     this.scene.add(mesh);
     async function hasFp16() {
       try {
@@ -129,6 +133,7 @@ class Level {
   }
 
   async update() {
+    this.mesh!.position.set(this.render_depth ? 0 : 0.125, 0, 0);
     this.controls.update();
     this.rand.value.setX(Math.random());
     this.rand.value.setY(Math.random());
@@ -324,6 +329,7 @@ class App {
   }
 
   async initialize() {
+    this.level.render_depth = this.render_depth;
     await this.level.initialize();
   }
 
@@ -349,6 +355,7 @@ class App {
       this.stats.dom.hidden = !this.show_fps;
       this.stats.begin();
       this.level.freeze = this.freeze;
+      this.level.render_depth = this.render_depth;
       if (!this.freeze) {
         await this.level.update();
         this.level.noiseFactor.value = this.noiseFactor;
