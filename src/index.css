@@ -3,8 +3,36 @@ html {
   margin: 0;
   background-color: #333;
   overflow: hidden;
+  color: white;
+  font-family: Monaco, monospace;
 }
 
 canvas {
   image-rendering: pixelated;
+}
+
+#messages {
+  &:not([hidden]) {
+    display: flex;
+  }
+  align-items: center;
+  margin: auto;
+  padding: 2ch;
+  max-width: 80ch;
+  height: 100vh;
+}
+
+#title {
+  margin: 0;
+  position: absolute;
+  top: 1ch;
+}
+
+p {
+  margin-top: 0;
+}
+
+a {
+  color: cornflowerblue;
+  text-decoration: none;
 }

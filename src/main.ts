@@ -29,8 +29,9 @@ class Level {
       this.camera,
       document.getElementById('canvas')!,
     );
+    this.rand = t.uniform(t.vec3(0));
 
-    const scene = (this.scene = new THREE.Scene());
+    this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#000');
 
     // Debug view
@@ -56,149 +57,67 @@ class Level {
       backWall.mesh.position.z = -0.5;
       // this.scene.add(backWall.mesh); this.scene.add(new THREE.AxesHelper());
     }
+  }
 
-    // Setup objects:
-    {
-      this.rand = t.uniform(t.vec3(0));
-      const noise3 = t.Fn(({uv}: {uv: t.ShaderNodeObject<THREE.Node>}) => {
-        const r = t.rand(uv.add(this.rand));
-        const g = t.rand(uv.add(this.rand));
-        const b = t.rand(uv.add(this.rand));
-        return t.vec3(r, g, b);
-      });
+  async initialize() {
+    // Setup objects: TODO: Could we put this into a separate module or
+    // something?
+    const width = 256;
+    const height = 256;
 
-      const material = new THREE.MeshBasicNodeMaterial();
-      const r = noise3({uv: t.uv()}).x.sub(0.5).mul(this.noiseFactor);
-      // const r = t.float(0);
-      material.fragmentNode = t.vec4(
-        t
-          .float(1)
-          .sub(
-            t
-              .length(t.positionWorld.sub(t.cameraPosition))
-              .div(t.vec3(t.cameraFar)),
-          )
-          .add(r),
-        1,
-      );
+    const depthCanvas = new OffscreenCanvas(width, height);
+    const depthCtx = depthCanvas.getContext('2d')!;
+    depthCtx.fillStyle = 'black';
+    depthCtx.fillRect(0, 0, width, height);
 
-      // ```
-      // material.fragmentNode = t.wgslFn(` fn main_fragment( cameraPosition:
-      //   vec4f, positionWorld: vec4f, cameraFar: f32 ) -> vec4f { return
-      //   rand(vec2(0,0)) + vec4f( 1.0 - (length(positionWorld -
-      //   cameraPosition) / vec3f(cameraFar)), 1.0
-      //     );
-      //   }
-      // `)({
-      //   cameraPosition: t.cameraPosition,
-      //   positionWorld: t.positionWorld,
-      //   cameraFar: t.cameraFar,
-      // });
-      // ```
+    const videoCanvas = new OffscreenCanvas(width, height);
+    const videoCtx = videoCanvas.getContext('2d')!;
 
-      const brickCountX = 5;
-      const brickCountY = 5;
-      const brickCountZ = 3;
-      const gap = 0.03;
-      const availableWidth = backWall.width - (brickCountX + 1) * gap;
-      const availableHeight = backWall.height - (brickCountY + 1) * gap;
-      const availableDepth = 0.5 - (brickCountZ + 1) * gap;
-      const brickWidth = availableWidth / brickCountX;
-      const brickHeight = availableHeight / brickCountY;
-      const brickDepth = availableDepth / brickCountZ;
+    const constraints = {
+      video: {width: 720, height: 720, facingMode: 'user'},
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.createElement('video');
 
-      const left = -backWall.width / 2;
-      const bottom = -backWall.height / 2;
-      const back = backWall.mesh.position.z;
+    video.srcObject = stream;
+    video.play();
 
-      const geometry = new THREE.BoxGeometry(
-        brickWidth,
-        brickHeight,
-        brickDepth,
-      );
-
-      for (let x = 0; x < brickCountX; ++x) {
-        for (let y = 0; y < brickCountY; ++y) {
-          for (let z = 0; z < brickCountZ; ++z) {
-            if (Math.random() < 0.5) continue;
-            const box = new THREE.Mesh(geometry, material);
-            box.position.set(
-              left + brickWidth / 2 + gap + brickWidth * x + gap * x,
-              bottom + brickHeight / 2 + gap + brickHeight * y + gap * y,
-              back + brickDepth / 2 + gap + brickDepth * z + gap * z,
-            );
-            this.scene.add(box);
-            this.bricks.push(box);
-          }
-        }
+    const texture = new THREE.CanvasTexture(depthCanvas);
+    const geometry = new THREE.PlaneGeometry(width, height);
+    geometry.scale(-1.5 / width, 1.5 / width, 1.5 / width);
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    this.scene.add(mesh);
+    async function hasFp16() {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        return adapter!.features.has('shader-f16');
+      } catch {
+        return false;
       }
-
-      // TODO: Could we put this into a separate module or something?
-      (async () => {
-        const width = 256;
-        const height = 256;
-
-        const depthCanvas = new OffscreenCanvas(width, height);
-        const depthCtx = depthCanvas.getContext('2d')!;
-        depthCtx.fillStyle = '#f0f';
-        depthCtx.fillRect(0, 0, width, height);
-
-        const videoCanvas = new OffscreenCanvas(width, height);
-        const videoCtx = videoCanvas.getContext('2d')!;
-
-        const constraints = {
-          video: {width: 720, height: 720, facingMode: 'user'},
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        const video = document.createElement('video');
-
-        video.srcObject = stream;
-        video.play();
-
-        const texture = new THREE.CanvasTexture(depthCanvas);
-        const geometry = new THREE.PlaneGeometry(width, height);
-        geometry.scale(-1.5 / width, 1.5 / width, 1.5 / width);
-        const material = new THREE.MeshBasicMaterial({
-          map: texture,
-          side: THREE.DoubleSide,
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-        async function hasFp16() {
-          try {
-            const adapter = await navigator.gpu.requestAdapter();
-            const result = adapter!.features.has('shader-f16');
-            if (result) {
-              console.log('has fp16');
-            } else {
-              console.log('does not have fp16');
-            }
-            return result;
-          } catch {
-            return false;
-          }
-        }
-        const depthEstimator = await pipeline(
-          'depth-estimation',
-          'onnx-community/depth-anything-v2-small',
-          {
-            dtype: (await hasFp16()) ? 'fp16' : 'fp32',
-            device: 'webgpu',
-          },
-        );
-
-        async function updateCanvas() {
-          videoCtx.drawImage(video, 0, 0, width, height);
-          const {depth} = (await depthEstimator(
-            videoCanvas,
-          )) as DepthEstimationPipelineOutput;
-          depthCtx.drawImage(depth.toCanvas(), 0, 0, width, height);
-          texture.needsUpdate = true;
-          requestAnimationFrame(updateCanvas);
-        }
-        updateCanvas();
-      })();
     }
+    const depthEstimator = await pipeline(
+      'depth-estimation',
+      'onnx-community/depth-anything-v2-small',
+      {
+        dtype: (await hasFp16()) ? 'fp16' : 'fp32',
+        device: 'webgpu',
+      },
+    );
+
+    async function updateCanvas() {
+      videoCtx.drawImage(video, 0, 0, width, height);
+      const {depth} = (await depthEstimator(
+        videoCanvas,
+      )) as DepthEstimationPipelineOutput;
+      depthCtx.drawImage(depth.toCanvas(), 0, 0, width, height);
+      texture.needsUpdate = true;
+      requestAnimationFrame(updateCanvas);
+    }
+    updateCanvas();
   }
 
   onWindowResize() {
@@ -366,12 +285,17 @@ class App {
   autostereogram: Autostereogram;
   stats: Stats;
   renderTarget: THREE.RenderTarget;
-  renderAutoStereogram: boolean = true;
+  render_depth: boolean = false;
   gui: GUI;
   noiseFactor: number = 0.0;
 
-  constructor(device: GPUDevice) {
+  constructor(public device: GPUDevice) {
     this.stats = new Stats();
+    this.stats.dom.hidden = true;
+    this.gui = new GUI({});
+    this.gui.close();
+    this.gui.hide();
+
     this.renderer = new THREE.WebGPURenderer({
       canvas: document.getElementById('canvas')! as HTMLCanvasElement,
       device,
@@ -392,17 +316,20 @@ class App {
     this.level = new Level();
     this.renderTarget = new THREE.RenderTarget(innerWidth, innerHeight);
     this.autostereogram = new Autostereogram(this.renderTarget.texture);
-
-    {
-      this.gui = new GUI({});
-      this.gui.add(this, 'renderAutoStereogram');
-      this.gui.add(this, 'noiseFactor');
-    }
   }
 
-  async run() {
+  async initialize() {
+    await this.level.initialize();
+  }
+
+  run() {
     this.onWindowResize_();
     this.raf_();
+    this.stats.dom.hidden = false;
+
+    this.gui.add(this, 'render_depth');
+    // this.gui.add(this, 'noiseFactor');
+    this.gui.show();
   }
 
   onWindowResize_() {
@@ -416,11 +343,11 @@ class App {
       this.stats.begin();
       this.level.update();
       this.level.noiseFactor.value = this.noiseFactor;
-      if (this.renderAutoStereogram) {
+      if (!this.render_depth) {
         this.renderer.setRenderTarget(this.renderTarget);
       }
       await this.renderer.renderAsync(this.level.scene, this.level.camera);
-      if (this.renderAutoStereogram) {
+      if (!this.render_depth) {
         this.autostereogram.update();
         await this.renderer.computeAsync(this.autostereogram.computeNode);
         this.renderer.setRenderTarget(null);
@@ -436,15 +363,12 @@ class App {
   }
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
+export const getApp = async () => {
+  if (!navigator.gpu) {
+    return;
+  }
   const adapter = (await navigator.gpu.requestAdapter())!;
-  const device = (await adapter.requestDevice({
-    requiredLimits: {
-      maxComputeWorkgroupSizeX: 1024,
-      maxComputeInvocationsPerWorkgroup: 1024,
-    },
-    requiredFeatures: ['bgra8unorm-storage'],
-  }))!;
+  const device = (await adapter.requestDevice())!;
   const app = new App(device);
-  await app.run();
-});
+  return app;
+};
