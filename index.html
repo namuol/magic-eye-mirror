@@ -64,25 +64,31 @@
         document.getElementById('canvas').hidden = true;
         document.getElementById('not-supported-message').hidden = false;
       } else {
-        document.getElementById('warning').hidden = false;
-        document
-          .getElementById('exit-demo')
-          .addEventListener('click', async () => {
-            document.location = 'https://lou.wtf';
-          });
-        document
-          .getElementById('run-demo')
-          .addEventListener('click', async () => {
-            document.getElementById('warning').hidden = true;
-            document.getElementById('loader').hidden = false;
-            const {getApp} = await import('/src/main.ts');
-            const app = await getApp();
-            await app.initialize();
-            document.getElementById('messages').hidden = true;
-            document.getElementById('canvas').hidden = false;
-            app.run();
-            document.getElementById('viewing-tips-link').hidden = false;
-          });
+        const runDemo = async () => {
+          document.getElementById('warning').hidden = true;
+          document.getElementById('loader').hidden = false;
+          const {getApp} = await import('/src/main.ts');
+          const app = await getApp();
+          await app.initialize();
+          document.getElementById('messages').hidden = true;
+          document.getElementById('canvas').hidden = false;
+          app.run();
+          document.getElementById('viewing-tips-link').hidden = false;
+        };
+
+        if (process.env.NODE_ENV === 'development') {
+          runDemo();
+        } else {
+          document.getElementById('warning').hidden = false;
+          document
+            .getElementById('exit-demo')
+            .addEventListener('click', async () => {
+              document.location = 'https://lou.wtf';
+            });
+          document
+            .getElementById('run-demo')
+            .addEventListener('click', runDemo);
+        }
       }
     </script>
     <script></script>

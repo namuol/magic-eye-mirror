@@ -146,6 +146,9 @@ class Autostereogram {
   scene: THREE.Scene;
   computeNode: THREE.ComputeNode;
   rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
+  minDisparity = t.uniform(0.15);
+  maxDisparity = t.uniform(0.2);
+  separation = t.uniform(0.75);
 
   constructor(inputTexture: THREE.Texture) {
     const scale = 1;
@@ -180,8 +183,14 @@ class Autostereogram {
       return t.vec3(r, g, b);
     });
 
-    const minDisparity = t.float(width * 0.15);
-    const maxDisparity = t.float(width * 0.2);
+    const minDisparity = t
+      .float(width)
+      .mul(this.minDisparity)
+      .mul(this.separation);
+    const maxDisparity = t
+      .float(width)
+      .mul(this.maxDisparity)
+      .mul(this.separation);
     const Y_COUNT = 1;
 
     const computeTexture = t.Fn(() => {
@@ -297,7 +306,10 @@ class App {
   show_fps: boolean = false;
   freeze: boolean = false;
   gui: GUI;
-  noiseFactor: number = 0.0;
+  noiseFactor = 0.0;
+  minDisparity = 0.15;
+  maxDisparity = 0.2;
+  separation = 0.75;
 
   constructor(public device: GPUDevice) {
     this.stats = new Stats();
@@ -341,6 +353,9 @@ class App {
     this.gui.add(this, 'show_fps');
     this.gui.add(this, 'freeze');
     // this.gui.add(this, 'noiseFactor');
+    this.gui.add(this, 'separation', 0.1, 1.5, 0.01);
+    // this.gui.add(this, 'minDisparity', 0.1, 0.3, 0.01); this.gui.add(this,
+    // 'maxDisparity', 0.1, 0.3, 0.01);
     this.gui.show();
   }
 
@@ -356,22 +371,29 @@ class App {
       this.stats.begin();
       this.level.freeze = this.freeze;
       this.level.render_depth = this.render_depth;
+      this.level.noiseFactor.value = this.noiseFactor;
+      this.autostereogram.minDisparity.value = this.minDisparity;
+      this.autostereogram.maxDisparity.value = this.maxDisparity;
+      this.autostereogram.separation.value = this.separation;
+
       if (!this.freeze) {
         await this.level.update();
-        this.level.noiseFactor.value = this.noiseFactor;
-        if (!this.render_depth) {
-          this.renderer.setRenderTarget(this.renderTarget);
-        }
-        await this.renderer.renderAsync(this.level.scene, this.level.camera);
-        if (!this.render_depth) {
+      }
+
+      if (!this.render_depth) {
+        this.renderer.setRenderTarget(this.renderTarget);
+      }
+      await this.renderer.renderAsync(this.level.scene, this.level.camera);
+      if (!this.render_depth) {
+        if (!this.freeze) {
           this.autostereogram.update();
-          await this.renderer.computeAsync(this.autostereogram.computeNode);
-          this.renderer.setRenderTarget(null);
-          await this.renderer.renderAsync(
-            this.autostereogram.scene,
-            this.autostereogram.camera,
-          );
         }
+        await this.renderer.computeAsync(this.autostereogram.computeNode);
+        this.renderer.setRenderTarget(null);
+        await this.renderer.renderAsync(
+          this.autostereogram.scene,
+          this.autostereogram.camera,
+        );
       }
       this.stats.end();
 
