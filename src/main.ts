@@ -149,6 +149,7 @@ class Autostereogram {
   minDisparity = t.uniform(0.15);
   maxDisparity = t.uniform(0.2);
   separation = t.uniform(0.75);
+  pattern_scale = t.uniform(6);
 
   constructor(inputTexture: THREE.Texture) {
     const scale = 1;
@@ -253,7 +254,7 @@ class Autostereogram {
             outputTexture,
             outputUV,
             noise3({
-              uv: t.uvec2(offsetUV.div(6)),
+              uv: t.uvec2(offsetUV.div(this.pattern_scale)),
             }),
             // t.vec4( t.div(t.float(offsetUV.x), t.float(width)),
             //   t.div(t.float(offsetUV.y), t.float(height)),
@@ -310,6 +311,7 @@ class App {
   minDisparity = 0.15;
   maxDisparity = 0.2;
   separation = 0.75;
+  pattern_scale = 6;
 
   constructor(public device: GPUDevice) {
     this.stats = new Stats();
@@ -354,6 +356,7 @@ class App {
     this.gui.add(this, 'freeze');
     // this.gui.add(this, 'noiseFactor');
     this.gui.add(this, 'separation', 0.1, 1.5, 0.01);
+    this.gui.add(this, 'pattern_scale', 1, 10, 0.1);
     // this.gui.add(this, 'minDisparity', 0.1, 0.3, 0.01); this.gui.add(this,
     // 'maxDisparity', 0.1, 0.3, 0.01);
     this.gui.show();
@@ -375,7 +378,7 @@ class App {
       this.autostereogram.minDisparity.value = this.minDisparity;
       this.autostereogram.maxDisparity.value = this.maxDisparity;
       this.autostereogram.separation.value = this.separation;
-
+      this.autostereogram.pattern_scale.value = this.pattern_scale;
       if (!this.freeze) {
         await this.level.update();
       }
