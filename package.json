@@ -11,13 +11,14 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "**/*.{ts,tsx,json,css,md}": [
+    "**/*.{ts,tsx,json,css,md,html}": [
       "eslint --fix",
       "rewrap -i",
       "prettier --write --ignore-unknown"
     ]
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.6.1",
     "lil-gui": "^0.20.0",
     "stats.js": "^0.17.0",
     "three": "0.178.0"

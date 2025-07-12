@@ -1,17 +1,71 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/index.css" />
+    <title>Autostereogram mirror: Magic-eye yourself</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="/src/index.css" />
-  <title>Vite + TS</title>
-</head>
+  <body>
+    <canvas id="canvas" hidden></canvas>
 
-<body>
-  <canvas id="canvas" />
-  <script type="module" src="/src/main.ts"></script>
-</body>
+    <div id="messages">
+      <div id="title">
+        <h1>Autostereogram mirror</h1>
+        <h2>"Magic-eye" yourself in real time</h2>
+        <p>by <a href="https://lou.wtf">Lou Acresti</a></p>
+      </div>
 
+      <div id="not-supported-message" class="message" hidden>
+        <p>⛔️ Browser not supported</p>
+        <p>
+          For best results, use Chromium-based browser (Chrome, Edge, etc) on a
+          desktop or laptop with a modern graphics card.
+        </p>
+      </div>
+
+      <div id="loader" class="message" hidden>
+        <p>Initializing depth estimation model... this may take a while.</p>
+      </div>
+
+      <div id="warning" class="message" hidden>
+        <p>⚠️ Seizure warning</p>
+        <p>
+          This demo includes flashing lights and patterns that may trigger
+          seizures in susceptible individuals.
+        </p>
+        <button id="run-demo" style="justify-self: flex-end">Run Demo</button>
+        <button id="exit-demo">Exit</button>
+      </div>
+    </div>
+
+    <script type="module">
+      import {getApp} from '/src/main.ts';
+      if (!navigator.gpu) {
+        document.getElementById('canvas').hidden = true;
+        document.getElementById('not-supported-message').hidden = false;
+      } else {
+        document.getElementById('warning').hidden = false;
+        document
+          .getElementById('exit-demo')
+          .addEventListener('click', async () => {
+            document.location = 'https://lou.wtf';
+          });
+        document
+          .getElementById('run-demo')
+          .addEventListener('click', async () => {
+            document.getElementById('warning').hidden = true;
+            document.getElementById('loader').hidden = false;
+            const app = await getApp();
+            await app.initialize();
+            document.getElementById('messages').hidden = true;
+            document.getElementById('canvas').hidden = false;
+            app.run();
+          });
+      }
+    </script>
+    <script></script>
+  </body>
 </html>
