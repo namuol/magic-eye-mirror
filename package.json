@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prepare": "husky"
+    "prepare": "husky",
+    "deploy": "vite build && gh-pages -d dist"
   },
   "lint-staged": {
     "**/*.{ts,tsx,json,css,md,html}": [
@@ -29,6 +30,7 @@
     "@types/three": "^0.178.0",
     "eslint": "^9.9.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "gh-pages": "^6.3.0",
     "globals": "^15.9.0",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.7",
