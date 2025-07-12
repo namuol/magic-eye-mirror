@@ -21,6 +21,10 @@
         </p>
       </div>
 
+      <div id="preloader" class="message">
+        <p>Loading demo...</p>
+      </div>
+
       <div id="not-supported-message" class="message" hidden>
         <p>⛔️ Browser not supported</p>
         <p>
@@ -56,6 +60,7 @@
 
     <script type="module">
       import {getApp} from '/src/main.ts';
+      document.getElementById('preloader').hidden = true;
       if (!navigator.gpu) {
         document.getElementById('canvas').hidden = true;
         document.getElementById('not-supported-message').hidden = false;
