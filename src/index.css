@@ -7,6 +7,15 @@ html {
   font-family: Monaco, monospace;
 }
 
+/* Cursor visibility based on GUI state */
+body.gui-faded {
+  cursor: none;
+}
+
+body.gui-visible {
+  cursor: default;
+}
+
 canvas {
   image-rendering: pixelated;
 }
