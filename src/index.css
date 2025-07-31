@@ -31,10 +31,6 @@ body.gui-faded:has(.lil-gui.root > button.title:not([aria-expanded='true'])) {
   }
 }
 
-canvas {
-  image-rendering: pixelated;
-}
-
 #messages {
   &:not([hidden]) {
     display: flex;
