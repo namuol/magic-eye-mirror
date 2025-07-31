@@ -312,8 +312,6 @@ class App {
   maxDisparity = 0.2;
   separation = 0.75;
   pattern_scale = 6;
-  fadeTimeout: NodeJS.Timeout | null = null;
-  fadeAnimations: Animation[] | null = null;
 
   constructor(public device: GPUDevice) {
     this.stats = new Stats();
@@ -413,194 +411,32 @@ class App {
    * Sets up the fade functionality for GUI and viewing tips
    */
   setupFadeFunctionality(): void {
-    const guiElement = this.gui.domElement;
+    // Simple fade functionality using CSS
+    let fadeTimeout: NodeJS.Timeout;
 
-    // Reset fade timer on mouse enter
-    guiElement.addEventListener('mouseenter', () => resetFadeTimer(this));
+    function cancelFade() {
+      clearTimeout(fadeTimeout);
+      document.body.classList.remove('gui-faded');
+      fadeTimeout = setTimeout(fadeOutGUI, 2000);
+    }
 
-    // Reset fade timer on any interaction with GUI elements
-    guiElement.addEventListener('click', () => resetFadeTimer(this));
-    guiElement.addEventListener('input', () => resetFadeTimer(this));
-    guiElement.addEventListener('change', () => resetFadeTimer(this));
-    guiElement.addEventListener('touchstart', () => resetFadeTimer(this));
-    guiElement.addEventListener('touchend', () => resetFadeTimer(this));
+    function fadeOutGUI() {
+      document.body.classList.add('gui-faded');
+    }
 
-    // Reset fade timer on mouse move
-    document.addEventListener('mousemove', () => resetFadeTimer(this));
+    // Start initial fade timer
+    fadeTimeout = setTimeout(fadeOutGUI, 2000);
 
-    // Start fade timer when GUI is shown
-    const originalShow = this.gui.show.bind(this.gui);
-    this.gui.show = (show?: boolean) => {
-      const result = originalShow(show);
-      if (show !== false) {
-        document.body.classList.remove('gui-faded');
-        document.body.classList.add('gui-visible');
-        startFadeTimer(this);
-      }
-      return result;
-    };
-
-    // Clear fade timer when GUI is hidden
-    const originalHide = this.gui.hide.bind(this.gui);
-    this.gui.hide = () => {
-      const result = originalHide();
-      if (this.fadeTimeout) {
-        clearTimeout(this.fadeTimeout);
-        this.fadeTimeout = null;
-      }
-      if (this.fadeAnimations) {
-        this.fadeAnimations.forEach((animation) => animation.cancel());
-        this.fadeAnimations = null;
-      }
-      // Remove cursor classes when GUI is hidden
-      document.body.classList.remove('gui-faded', 'gui-visible');
-      return result;
-    };
-
-    // Watch for expanded state changes
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (
-          mutation.type === 'attributes' &&
-          mutation.attributeName === 'class'
-        ) {
-          const target = mutation.target as Element;
-          if (target.classList.contains('expanded')) {
-            // GUI is expanded, cancel fade
-            if (this.fadeTimeout) {
-              clearTimeout(this.fadeTimeout);
-              this.fadeTimeout = null;
-            }
-            if (this.fadeAnimations) {
-              this.fadeAnimations.forEach((animation) => animation.cancel());
-              this.fadeAnimations = null;
-            }
-            guiElement.style.opacity = '1';
-            document.getElementById('viewing-tips-link')!.style.opacity = '1';
-            document.body.classList.remove('gui-faded');
-            document.body.classList.add('gui-visible');
-          } else {
-            // GUI is collapsed, start fade timer
-            startFadeTimer(this);
-          }
-        }
-      });
-    });
-
-    observer.observe(guiElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-
-    // Add global mouse move listener to reset fade timer when mouse is near GUI
-    document.addEventListener('mousemove', (e) => {
-      const rect = guiElement.getBoundingClientRect();
-      const margin = 50; // 50px margin around GUI
-
-      if (
-        e.clientX >= rect.left - margin &&
-        e.clientX <= rect.right + margin &&
-        e.clientY >= rect.top - margin &&
-        e.clientY <= rect.bottom + margin
-      ) {
-        resetFadeTimer(this);
-      }
-    });
-
-    document.addEventListener('touchstart', () => resetFadeTimer(this));
-    document.addEventListener('click', () => resetFadeTimer(this));
+    // Reset fade timer on various events
+    document.addEventListener('click', cancelFade);
+    document.addEventListener('mousemove', cancelFade);
+    document.addEventListener('keydown', cancelFade);
+    document.addEventListener('touchstart', cancelFade);
+    document.addEventListener('touchend', cancelFade);
+    document.addEventListener('touchmove', cancelFade);
+    document.addEventListener('touchcancel', cancelFade);
+    document.addEventListener('touchleave', cancelFade);
   }
-}
-
-/**
- * Starts the fade-out timer for the GUI controls
- */
-function startFadeTimer(app: App): void {
-  if (!app.gui) return;
-  if (!app.gui.domElement.classList.contains('closed')) return;
-
-  // Clear any existing fade timeout
-  if (app.fadeTimeout) {
-    clearTimeout(app.fadeTimeout);
-  }
-
-  // Clear any existing fade animation
-  if (app.fadeAnimations) {
-    app.fadeAnimations.forEach((animation) => animation.cancel());
-  }
-
-  // Check if GUI is expanded (has the 'expanded' class)
-  const guiElement = app.gui.domElement;
-  if (guiElement.classList.contains('expanded')) {
-    return; // Don't fade if expanded
-  }
-
-  // Set opacity to 1 (fully visible)
-  guiElement.style.opacity = '1';
-  document.getElementById('viewing-tips-link')!.style.opacity = '1';
-
-  // Start fade timer
-  app.fadeTimeout = setTimeout(() => {
-    fadeOutGUI(app);
-  }, 3000); // 3 second delay
-}
-
-/**
- * Fades out the GUI controls over 2 seconds
- */
-function fadeOutGUI(app: App): void {
-  if (!app.gui) return;
-
-  const guiElement = app.gui.domElement;
-
-  // Don't fade if expanded
-  if (guiElement.classList.contains('expanded')) {
-    return;
-  }
-
-  // Hide cursor and add faded class
-  document.body.classList.remove('gui-visible');
-  document.body.classList.add('gui-faded');
-
-  // Create fade animation
-  app.fadeAnimations = [];
-  [guiElement, document.getElementById('viewing-tips-link')!].forEach(
-    (element) => {
-      app.fadeAnimations!.push(
-        element.animate([{opacity: '1'}, {opacity: '0.1'}], {
-          duration: 2000, // 2 seconds
-          easing: 'ease-out',
-          fill: 'forwards',
-        }),
-      );
-    },
-  );
-}
-
-/**
- * Resets the fade timer and makes GUI fully visible
- */
-function resetFadeTimer(app: App): void {
-  if (!app.gui) return;
-
-  // Clear existing timeout and animation
-  if (app.fadeTimeout) {
-    clearTimeout(app.fadeTimeout);
-    app.fadeTimeout = null;
-  }
-
-  if (app.fadeAnimations) {
-    app.fadeAnimations.forEach((animation) => animation.cancel());
-    app.fadeAnimations = null;
-  }
-
-  // Show cursor and make GUI fully visible
-  document.body.classList.remove('gui-faded');
-  document.body.classList.add('gui-visible');
-  app.gui.domElement.style.opacity = '1';
-
-  // Start new fade timer
-  startFadeTimer(app);
 }
 
 export const getApp = async () => {
