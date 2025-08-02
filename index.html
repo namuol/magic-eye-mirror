@@ -104,15 +104,19 @@
           document.getElementById('magic-eye-anything-link').hidden = false;
         };
 
-        // if (process.env.NODE_ENV === 'development') { runDemo(); } else {
-        document.getElementById('warning').hidden = false;
-        document
-          .getElementById('exit-demo')
-          .addEventListener('click', async () => {
-            document.location = 'https://lou.wtf';
-          });
-        document.getElementById('run-demo').addEventListener('click', runDemo);
-        // }
+        if (process.env.NODE_ENV === 'development') {
+          runDemo();
+        } else {
+          document.getElementById('warning').hidden = false;
+          document
+            .getElementById('exit-demo')
+            .addEventListener('click', async () => {
+              document.location = 'https://lou.wtf';
+            });
+          document
+            .getElementById('run-demo')
+            .addEventListener('click', runDemo);
+        }
       }
     </script>
   </body>
