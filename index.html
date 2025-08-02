@@ -5,12 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/magic-eye-yourself/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Magic-eye mirror: Real-time autostereogram of your webcam</title>
-    <script type="module" crossorigin src="/magic-eye-yourself/assets/index-DDBi81U3.js"></script>
-    <link rel="stylesheet" crossorigin href="/magic-eye-yourself/assets/index-B29_lQws.css">
+    <script type="module" crossorigin src="/magic-eye-yourself/assets/index-D47Ib7Gd.js"></script>
+    <link rel="stylesheet" crossorigin href="/magic-eye-yourself/assets/index-CyK8yV-_.css">
   </head>
 
   <body>
     <canvas id="canvas" hidden></canvas>
+    <div id="top-actions">
+      <a
+        id="magic-eye-anything-link"
+        href="https://namuol.github.io/magic-eye-anything"
+        target="_blank"
+        rel="noopener"
+        hidden
+      >
+        📸 Magic-eye anything ↗️
+      </a>
+    </div>
 
     <div id="messages">
       <div id="title">
@@ -32,6 +43,13 @@
           For best results, use Chromium-based browser (Chrome, Edge, etc) on a
           desktop or laptop with a modern graphics card.
         </p>
+        <p>
+          You can also try
+          <a href="https://namuol.github.io/magic-eye-anything"
+            >Magic-eye anything ↗️</a
+          >
+          instead!
+        </p>
       </div>
 
       <div id="loader" class="message" hidden>
@@ -44,20 +62,29 @@
           This demo includes flashing lights and patterns that may trigger
           seizures in susceptible individuals.
         </p>
-        <button id="run-demo" style="justify-self: flex-end">Run Demo</button>
-        <button id="exit-demo">Exit</button>
+        <p>
+          For something less intense, try
+          <a href="https://lou.wtf/magic-eye-anything">Magic-eye anything ↗️</a
+          >.
+        </p>
+        <p>
+          <button id="run-demo" style="justify-self: flex-end">Run Demo</button>
+          <button id="exit-demo">Exit</button>
+        </p>
       </div>
     </div>
 
-    <a
-      id="viewing-tips-link"
-      href="https://github.com/namuol/magic-eye-yourself#viewing-tips"
-      target="_blank"
-      rel="noopener"
-      hidden
-    >
-      How to view?
-    </a>
+    <div id="bottom-actions">
+      <a
+        id="viewing-tips-link"
+        href="https://github.com/namuol/magic-eye-yourself#viewing-tips"
+        target="_blank"
+        rel="noopener"
+        hidden
+      >
+        👁️ How to view ↗️
+      </a>
+    </div>
 
   </body>
 </html>
