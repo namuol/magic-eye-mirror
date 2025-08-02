@@ -10,6 +10,17 @@
 
   <body>
     <canvas id="canvas" hidden></canvas>
+    <div id="top-actions">
+      <a
+        id="magic-eye-anything-link"
+        href="https://namuol.github.io/magic-eye-anything"
+        target="_blank"
+        rel="noopener"
+        hidden
+      >
+        📸 Magic-eye anything ↗️
+      </a>
+    </div>
 
     <div id="messages">
       <div id="title">
@@ -31,6 +42,13 @@
           For best results, use Chromium-based browser (Chrome, Edge, etc) on a
           desktop or laptop with a modern graphics card.
         </p>
+        <p>
+          You can also try
+          <a href="https://namuol.github.io/magic-eye-anything"
+            >Magic-eye anything ↗️</a
+          >
+          instead!
+        </p>
       </div>
 
       <div id="loader" class="message" hidden>
@@ -43,8 +61,15 @@
           This demo includes flashing lights and patterns that may trigger
           seizures in susceptible individuals.
         </p>
-        <button id="run-demo" style="justify-self: flex-end">Run Demo</button>
-        <button id="exit-demo">Exit</button>
+        <p>
+          For something less intense, try
+          <a href="https://lou.wtf/magic-eye-anything">Magic-eye anything ↗️</a
+          >.
+        </p>
+        <p>
+          <button id="run-demo" style="justify-self: flex-end">Run Demo</button>
+          <button id="exit-demo">Exit</button>
+        </p>
       </div>
     </div>
 
@@ -76,21 +101,18 @@
           document.getElementById('canvas').hidden = false;
           app.run();
           document.getElementById('viewing-tips-link').hidden = false;
+          document.getElementById('magic-eye-anything-link').hidden = false;
         };
 
-        if (process.env.NODE_ENV === 'development') {
-          runDemo();
-        } else {
-          document.getElementById('warning').hidden = false;
-          document
-            .getElementById('exit-demo')
-            .addEventListener('click', async () => {
-              document.location = 'https://lou.wtf';
-            });
-          document
-            .getElementById('run-demo')
-            .addEventListener('click', runDemo);
-        }
+        // if (process.env.NODE_ENV === 'development') { runDemo(); } else {
+        document.getElementById('warning').hidden = false;
+        document
+          .getElementById('exit-demo')
+          .addEventListener('click', async () => {
+            document.location = 'https://lou.wtf';
+          });
+        document.getElementById('run-demo').addEventListener('click', runDemo);
+        // }
       }
     </script>
   </body>

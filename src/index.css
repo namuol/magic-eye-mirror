@@ -26,7 +26,8 @@ body.gui-faded:has(.lil-gui.root > button.title:not([aria-expanded='true'])) {
   cursor: none;
 
   & .lil-gui.root,
-  #viewing-tips-link {
+  #viewing-tips-link,
+  #magic-eye-anything-link {
     transition: opacity 1s;
     opacity: 0;
   }
@@ -71,10 +72,10 @@ a {
 }
 
 /* Fixed UI elements with common styling */
-#viewing-tips-link {
+#viewing-tips-link,
+#magic-eye-anything-link {
   box-sizing: border-box;
   height: var(--app-control-height);
-  position: fixed;
   z-index: 1000;
   background: rgba(0, 0, 0, 0.85);
   color: #fff;
@@ -90,14 +91,20 @@ a {
   &:not([hidden]) {
     display: flex;
   }
+
+  &:hover {
+    background: rgba(30, 30, 30, 0.95);
+  }
 }
 
-#viewing-tips-link:hover {
-  background: rgba(30, 30, 30, 0.95);
+#top-actions {
+  position: fixed;
+  top: var(--app--gui-margin);
+  left: var(--app--gui-margin);
 }
 
-/* Individual positioning for fixed elements */
-#viewing-tips-link {
+#bottom-actions {
+  position: fixed;
   bottom: var(--app--gui-margin);
   left: var(--app--gui-margin);
 }
@@ -147,6 +154,13 @@ canvas {
     flex-direction: column;
     gap: var(--app--gui-margin);
     padding: var(--app--gui-margin);
+  }
+
+  #top-actions {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
   }
 
   #bottom-actions {
