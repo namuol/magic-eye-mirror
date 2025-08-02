@@ -1,14 +1,14 @@
 :root {
   --app--font-family: Monaco, Inconsolata, monospace;
   --app--font-size: 0.85rem;
-  --app--gui-margin: 2ch;
+  --app--gui-margin: 16px;
+  --app-control-height: 32px;
 }
 
 body,
 html {
   margin: 0;
   background-color: #333;
-  overflow: hidden;
   color: white;
   font-family: var(--app--font-family);
 }
@@ -18,6 +18,7 @@ body {
   flex-direction: column;
   justify-content: center;
   height: 101vh;
+  /* background-image: url('/90s.png'); background-repeat: repeat; */
 }
 
 /* Cursor visibility based on GUI state */
@@ -35,11 +36,23 @@ body.gui-faded:has(.lil-gui.root > button.title:not([aria-expanded='true'])) {
   &:not([hidden]) {
     display: flex;
   }
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   align-items: center;
+  place-content: center;
   margin: auto;
   padding: 2ch;
   max-width: 80ch;
-  height: 100vh;
+  flex-grow: 1;
+
+  & p {
+    text-shadow: 0 0 10px rgba(0, 0, 0, 1);
+    padding: 1ch;
+    border-radius: 5px;
+  }
 }
 
 #title {
@@ -49,7 +62,7 @@ body.gui-faded:has(.lil-gui.root > button.title:not([aria-expanded='true'])) {
 }
 
 p {
-  margin-top: 0;
+  margin: 0;
 }
 
 a {
@@ -57,23 +70,36 @@ a {
   text-decoration: none;
 }
 
+/* Fixed UI elements with common styling */
 #viewing-tips-link {
+  box-sizing: border-box;
+  height: var(--app-control-height);
   position: fixed;
-  bottom: var(--app--gui-margin);
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 1000;
   background: rgba(0, 0, 0, 0.85);
   color: #fff;
   padding: 0.8ch 1ch;
   border-radius: 5px;
   font-size: var(--app--font-size);
+  font-family: var(--app--font-family);
   text-decoration: none;
   box-shadow: 0 2px var(--app--gui-margin) rgba(0, 0, 0, 0.15);
   transition: background 0.2s;
+  align-items: center;
+  justify-content: center;
+  &:not([hidden]) {
+    display: flex;
+  }
 }
+
 #viewing-tips-link:hover {
   background: rgba(30, 30, 30, 0.95);
+}
+
+/* Individual positioning for fixed elements */
+#viewing-tips-link {
+  bottom: var(--app--gui-margin);
+  left: var(--app--gui-margin);
 }
 
 .lil-gui.root {
@@ -81,9 +107,13 @@ a {
   right: var(--app--gui-margin);
   border-radius: 5px;
   overflow: hidden;
-  width: 40ch;
+  max-height: calc(100dvh - var(--app--gui-margin) * 2);
+
   & > button {
-    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--app-control-height);
     padding: 0.8ch 1ch;
   }
 
@@ -100,5 +130,44 @@ a {
     grid-auto-flow: column;
     grid-template-columns: 1fr auto;
     padding: 0 10px;
+  }
+}
+
+canvas {
+  width: 100dvw;
+  height: 100dvh;
+  object-fit: contain;
+}
+
+/* mobile styles */
+@media (max-width: 600px) {
+  #bottom-actions,
+  #top-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app--gui-margin);
+    padding: var(--app--gui-margin);
+  }
+
+  #bottom-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  #viewing-tips-link {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    top: auto;
+    transform: none;
+  }
+
+  .lil-gui.root {
+    top: calc(var(--app--gui-margin) * 2 + var(--app-control-height));
+    left: var(--app--gui-margin);
+    width: calc(100vw - var(--app--gui-margin) * 2);
   }
 }

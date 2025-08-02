@@ -316,8 +316,9 @@ class App {
   constructor(public device: GPUDevice) {
     this.stats = new Stats();
     this.stats.dom.hidden = true;
-    this.gui = new GUI({});
+    this.gui = new GUI();
     this.gui.close();
+    this.gui.title('Advanced controls');
     this.gui.hide();
 
     this.renderer = new THREE.WebGPURenderer({
@@ -351,12 +352,12 @@ class App {
     this.onWindowResize_();
     this.raf_();
 
-    this.gui.add(this, 'render_depth');
-    this.gui.add(this, 'show_fps');
-    this.gui.add(this, 'freeze');
+    this.gui.add(this, 'render_depth').name('Render depth');
+    this.gui.add(this, 'show_fps').name('Show FPS');
+    this.gui.add(this, 'freeze').name('Freeze');
     // this.gui.add(this, 'noiseFactor');
-    this.gui.add(this, 'separation', 0.1, 1.5, 0.01);
-    this.gui.add(this, 'pattern_scale', 1, 10, 0.1);
+    this.gui.add(this, 'separation', 0.1, 1.5, 0.01).name('Depth');
+    this.gui.add(this, 'pattern_scale', 1, 10, 0.1).name('Pattern scale');
     // this.gui.add(this, 'minDisparity', 0.1, 0.3, 0.01); this.gui.add(this,
     // 'maxDisparity', 0.1, 0.3, 0.01);
     this.gui.show();
