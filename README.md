@@ -1,6 +1,6 @@
-# Autostereogram mirror
+# Magic-eye mirror
 
-## "Magic-eye" yourself in realtime
+## Realtime autostereogram of your webcam
 
 A toy autostereogram renderer demo in threejs/webgpu, using [depth
 estimation](https://huggingface.co/spaces/Xenova/webgpu-realtime-depth-estimation)
@@ -30,3 +30,8 @@ Some viewing tips for this demo:
   into focus
 
 Good luck! 🤓
+
+## See also
+
+For something that works well on mobile with any still image, try [Magic-eye
+anything](https://namuol.github.io/magic-eye-anything).
