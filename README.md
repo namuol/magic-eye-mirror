@@ -8,7 +8,7 @@ to produce the input depth map.
 
 [**Online demo**](https://namuol.github.io/magic-eye-yourself)
 
-![](/screenshot.png)
+![](/screenshot.jpg)
 
 ## Viewing tips
 
