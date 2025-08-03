@@ -11,7 +11,6 @@ import * as THREE from 'three/webgpu';
 class Level {
   camera: THREE.PerspectiveCamera;
   scene: THREE.Scene;
-  bricks: THREE.Mesh[] = [];
   controls: OrbitControls;
   noiseFactor = t.uniform(t.float(0.1));
   rand: t.ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>;
@@ -150,6 +149,7 @@ class Autostereogram {
   maxDisparity = t.uniform(0.2);
   separation = t.uniform(0.75);
   pattern_scale = t.uniform(6);
+  time = t.uniform(0.0);
 
   constructor(inputTexture: THREE.Texture) {
     const scale = 1;
@@ -255,7 +255,7 @@ class Autostereogram {
             outputUV,
             noise3({
               uv: t.uvec2(offsetUV.div(this.pattern_scale)),
-            }),
+            }).xxx,
             // t.vec4( t.div(t.float(offsetUV.x), t.float(width)),
             //   t.div(t.float(offsetUV.y), t.float(height)),
             //   t.div(t.float(offsetUV.y), t.float(height)), 1,
@@ -275,7 +275,76 @@ class Autostereogram {
     ]);
 
     const material = new THREE.MeshBasicNodeMaterial({color: 0x00ff00});
-    material.colorNode = t.texture(outputTexture);
+    const hslToRgb = t.Fn(({hsl}: {hsl: t.ShaderNodeObject<THREE.Node>}) => {
+      const h = hsl.x;
+      const s = hsl.y;
+      const l = hsl.z;
+
+      // Helper function to convert hue to RGB component
+      const hueToRgb = t.Fn(
+        ({
+          p,
+          q,
+          t: hueT,
+        }: {
+          p: t.ShaderNodeObject<THREE.Node>;
+          q: t.ShaderNodeObject<THREE.Node>;
+          t: t.ShaderNodeObject<THREE.Node>;
+        }) => {
+          const normalizedT = hueT.sub(t.floor(hueT)); // Normalize to [0, 1)
+
+          return t.select(
+            normalizedT.lessThan(t.float(1 / 6)),
+            p.add(q.sub(p).mul(t.float(6)).mul(normalizedT)),
+            t.select(
+              normalizedT.lessThan(t.float(1 / 2)),
+              q,
+              t.select(
+                normalizedT.lessThan(t.float(2 / 3)),
+                p.add(
+                  q
+                    .sub(p)
+                    .mul(t.float(6))
+                    .mul(t.float(2 / 3).sub(normalizedT)),
+                ),
+                p,
+              ),
+            ),
+          );
+        },
+      );
+
+      // If saturation is 0, return grayscale
+      const isGrayscale = s.lessThan(t.float(0.001));
+      const grayscale = t.vec3(l, l, l);
+
+      // Calculate intermediate values for colored result
+      const q = l
+        .lessThan(t.float(0.5))
+        .select(l.mul(t.float(1).add(s)), l.add(s).sub(l.mul(s)));
+      const p = t.float(2).mul(l).sub(q);
+
+      // Calculate RGB components using hue
+      const r = hueToRgb({p, q, t: h.add(t.float(1 / 3))});
+      const g = hueToRgb({p, q, t: h});
+      const b = hueToRgb({p, q, t: h.sub(t.float(1 / 3))});
+
+      const coloredResult = t.vec3(r, g, b);
+
+      // Return grayscale if saturation is 0, otherwise return colored result
+      return isGrayscale.select(grayscale, coloredResult);
+    });
+
+    const verticalGradient = t.Fn(() => {
+      const y = t.screenCoordinate.y.div(height);
+      const hsl = t.vec3(
+        y.mul(0.5).sub(this.time.mul(0.1)), // hue varies from 0 to 1 (full color spectrum)
+        0.9, // high saturation for vibrant colors
+        y.mul(t.float(1).sub(y)).add(0.5),
+      );
+      return hslToRgb({hsl});
+    });
+    material.colorNode = t.texture(outputTexture).mul(verticalGradient());
 
     const geometry = new THREE.PlaneGeometry(1, 1);
     const plane = new THREE.Mesh(geometry, material);
@@ -383,6 +452,7 @@ class App {
       this.autostereogram.maxDisparity.value = this.maxDisparity;
       this.autostereogram.separation.value = this.separation;
       this.autostereogram.pattern_scale.value = this.pattern_scale;
+      this.autostereogram.time.value = performance.now() / 1000;
       if (!this.freeze) {
         await this.level.update();
       }
